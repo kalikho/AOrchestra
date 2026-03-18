@@ -162,17 +162,25 @@ class DelegateTaskTool(BaseAction):
             self.env.instruction = task_instruction
         
         try:
-            # 5. Execute
-            result = await self.runner.run(sub_agent, self.env)
+            # 5. Get env max_steps before execution
+            env_max_steps = self.env.get_basic_info().max_steps
             
-            # 6. Extract finish_result
+            # 6. Execute (GAIA uses specialized loop with forced finish)
+            if self.benchmark_type == "gaia":
+                result = await self._run_gaia_with_forced_finish(
+                    sub_agent, self.env, env_max_steps
+                )
+            else:
+                result = await self.runner.run(sub_agent, self.env)
+            
+            # 7. Extract finish_result
             finish_result = None
             if result.trace:
                 last = result.trace[-1]
                 if last.info.get("finished") and last.info.get("finish_result"):
                     finish_result = last.info["finish_result"]
             
-            # 7. Summarize trace (using fixed gemini-3-flash-preview model)
+            # 8. Summarize trace (using fixed gemini-3-flash-preview model)
             trace_summary = await self._summarize_trace(result.trace, task_instruction)
             
             # Convert StepRecord objects to dicts for JSON serialization
@@ -189,7 +197,7 @@ class DelegateTaskTool(BaseAction):
                 "trace_summary": trace_summary,
                 "statistics": {
                     "total_steps": result.steps, 
-                    "max_steps": 30, 
+                    "max_steps": env_max_steps, 
                     "completed": result.done
                 },
             }
@@ -203,6 +211,108 @@ class DelegateTaskTool(BaseAction):
             if original_instruction is not None and hasattr(self.env, 'instruction'):
                 self.env.instruction = original_instruction
     
+    async def _run_gaia_with_forced_finish(
+        self, agent, env, max_steps: int
+    ):
+        """GAIA-specific execution loop that passes step info and forces finish on last step."""
+        import inspect
+        from benchmark.common.runner import LevelResult, StepRecord
+        from datetime import datetime
+
+        start_time = datetime.now().isoformat()
+
+        info = env.get_basic_info()
+        agent.reset(info)
+
+        reset_result = env.reset()
+        obs = await reset_result if inspect.isawaitable(reset_result) else reset_result
+
+        history: list[StepRecord] = []
+        total_reward = 0.0
+
+        for t in range(max_steps):
+            current_step = t + 1
+
+            step_result = await agent.step(
+                observation=obs,
+                history=history,
+                current_step=current_step,
+                max_steps=max_steps,
+            )
+
+            if isinstance(step_result, (list, tuple)):
+                if len(step_result) == 3:
+                    action, raw_response, raw_input = step_result
+                elif len(step_result) == 2:
+                    action, raw_response = step_result
+                    raw_input = None
+                else:
+                    raise ValueError(f"agent.step returned {len(step_result)} values")
+            else:
+                raise TypeError(f"agent.step returned unsupported type: {type(step_result)}")
+
+            if t == max_steps - 1 and action.get("action") != "finish":
+                last_output = ""
+                if isinstance(obs, dict):
+                    last_output = str(obs.get("output", "") or obs.get("error", ""))
+                if not last_output:
+                    for prev in reversed(history):
+                        prev_obs = prev.observation
+                        if isinstance(prev_obs, dict):
+                            last_output = str(
+                                prev_obs.get("output", "") or prev_obs.get("error", "")
+                            )
+                            if last_output:
+                                break
+                if len(last_output) > 300:
+                    last_output = last_output[:300]
+
+                logger.info(
+                    f"[DelegateTool] Forcing finish at step {current_step}/{max_steps}"
+                )
+                action = {
+                    "action": "finish",
+                    "params": {
+                        "result": last_output,
+                        "status": "partial",
+                        "summary": f"Forced finish at step {current_step}/{max_steps}. Last output preserved.",
+                    },
+                }
+                raw_response = "forced_finish_on_last_step"
+
+            obs_next, reward, done, step_info = await env.step(action)
+
+            step_record = StepRecord(
+                observation=obs,
+                action=action,
+                reward=reward,
+                raw_response=raw_response,
+                done=done,
+                info=step_info,
+                raw_input=raw_input,
+            )
+            history.append(step_record)
+            total_reward += reward
+            obs = obs_next
+
+            if done:
+                break
+
+        end_time = datetime.now().isoformat()
+        usage_summary = agent.llm.get_usage_summary()
+        return LevelResult(
+            model=usage_summary.get("model", ""),
+            total_reward=total_reward,
+            steps=len(history),
+            done=history[-1].done if history else False,
+            trace=history,
+            cost=usage_summary.get("total_cost", 0.0),
+            input_tokens=usage_summary.get("total_input_tokens", 0),
+            output_tokens=usage_summary.get("total_output_tokens", 0),
+            start_time=start_time,
+            end_time=end_time,
+        )
+
     async def _summarize_trace(self, trace, task_instruction: str) -> str:
         """Summarize execution trace (using fixed gemini-3-flash-preview model)"""
         if not trace:
@@ -212,17 +322,22 @@ class DelegateTaskTool(BaseAction):
         
         # Select different summary prompt based on benchmark_type
         if self.benchmark_type == "gaia":
-            prompt = f"""You are a trajectory summarizer. Review the SubAgent's execution trace.
+            original_question = getattr(self.env, 'instruction', '') or task_instruction
+            prompt = f"""You are a trajectory summarizer. Review the SubAgent's execution trace. Compare the execution trace against the original task requirements.
 
-Task: {task_instruction[:200]}
-Steps: {len(trace)}
+== ORIGINAL TASK ==
+{original_question}
 
-=== Trace ===
+== EXECUTION TRACE ==
 {trace_text}
-===
+
+== OUTPUT ==
+Based on the trace, answer:
+1. ✅ COMPLETED: What requirements from the original task were actually done?
+2. ❌ REMAINING: What requirements are still missing or not properly tested?
 
 Summarize in 5-10 bullets: key progress, problems, remaining issues.
-Output ONLY bullets."""
+Be specific and concise. Output ONLY the two sections above."""
         elif self.benchmark_type == "swebench":
             original_question = getattr(self.env, 'instruction', '') or task_instruction
             prompt = f"""You are a trajectory summarizer for a SWE-bench task (GitHub issue fixing).

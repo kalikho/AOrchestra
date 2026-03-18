@@ -122,6 +122,8 @@ class MainAgent(BaseAgent):
                 entry_lines.append(f'├─ Result: {result_str}')
                 if e.get("summary"):
                     entry_lines.append(f'├─ Summary: {e["summary"]}')
+                if e.get("status") in ("timeout", "partial") and (not e.get("result") or e.get("result") == "-"):
+                    entry_lines.append(f'├─ Note: SubAgent did not complete. Check Trace summary below for intermediate findings.')
             # TerminalBench format
             else:
                 if e.get("message"):

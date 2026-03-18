@@ -33,7 +33,7 @@ class ImageAnalysisAction(BaseAction):
     }
     
     # Default model for image analysis (should support vision)
-    DEFAULT_MODEL: str = "claude-4-5-sonnet"
+    DEFAULT_MODEL: str = "claude-opus-4-5"
 
     def encode_image(self, image_path: str) -> str:
         data = Path(image_path).expanduser().read_bytes()
@@ -139,7 +139,7 @@ class ParseAudioAction(BaseAction):
     }
     
     # Default model for audio processing (should support audio input)
-    DEFAULT_MODEL: str = "gpt-4o"
+    DEFAULT_MODEL: str = "claude-opus-4-5"
     
     def _get_llm_config(self, model_name: Optional[str] = None) -> tuple:
         """Get LLM configuration from model_config.yaml or environment variables."""
