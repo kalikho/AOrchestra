@@ -33,7 +33,7 @@ class ImageAnalysisAction(BaseAction):
     }
     
     # Default model for image analysis (should support vision)
-    DEFAULT_MODEL: str = "gemini-2.5-flash-image-preview"
+    DEFAULT_MODEL: str = "claude-4-5-sonnet"
 
     def encode_image(self, image_path: str) -> str:
         data = Path(image_path).expanduser().read_bytes()

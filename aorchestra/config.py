@@ -23,6 +23,7 @@ class GAIAOrchestraConfig:
     max_tasks: int | None = None
     
     # Execution
+    max_steps: int = 30
     max_attempts: int = 5
     max_concurrency: int = 1
     
@@ -60,6 +61,7 @@ class GAIAOrchestraConfig:
         # Optional fields
         level_filter = raw.get("level_filter")
         max_tasks = raw.get("max_tasks")
+        max_steps = int(raw.get("max_steps", 30))
         max_attempts = int(raw.get("max_attempts", 5))
         max_concurrency = int(raw.get("max_concurrency", 1))
         
@@ -79,6 +81,7 @@ class GAIAOrchestraConfig:
             attachments_dir=attachments_dir,
             level_filter=level_filter,
             max_tasks=max_tasks,
+            max_steps=max_steps,
             max_attempts=max_attempts,
             max_concurrency=max_concurrency,
             result_folder=result_folder,

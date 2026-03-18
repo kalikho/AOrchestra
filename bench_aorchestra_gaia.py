@@ -79,6 +79,7 @@ async def main():
     gaia_cfg = GAIAConfig(
         dataset_path=cfg.dataset_path,
         attachments_dir=cfg.attachments_dir,
+        max_steps=cfg.max_steps,
         level_filter=cfg.level_filter,
         max_tasks=cfg.max_tasks,
         result_folder=cfg.result_folder,
