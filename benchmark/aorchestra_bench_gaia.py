@@ -26,9 +26,12 @@ Parameters: {{"result": "<answer>", "status": "done|partial|blocked", "summary":
 - Use print() in ExecuteCodeAction to see computation results
 - Use 'finish' to report your result when done
 - When remaining steps < 5, finish with your best result
+- You MUST ONLY use the tools listed above. Do NOT invent or hallucinate tool names.
+- Reply with exactly one JSON action object matching the format below.
 
-Action format: {{"action": "<action_name>", "params": {{...}}}}
-Example: {{"action": "GoogleSearchAction", "params": {{"query": "your search query"}}}}
+Action format: {{"action": "<action_name>", "params": {{...}}, "memory": "<key observations>"}}
+Example tool action: {{"action": "GoogleSearchAction", "params": {{"query": "your search query"}}, "memory": "what you learned"}}
+Example finish action: {{"action": "finish", "params": {{"result": "<answer>", "status": "done|partial|blocked", "summary": "<brief summary of what you did>"}}, "memory": "final notes"}}
 """.strip()
 
 
@@ -138,9 +141,13 @@ class GAIAOrchestraEnvironment(Environment):
 
     def _handle_finish(self, params: Dict) -> Tuple[Observation, float, bool, Dict[str, Any]]:
         """Handle SubAgent finish - report to MainAgent without scoring."""
-        result = params.get("result", "")
+        result = params.get("result") or params.get("answer") or ""
         status = params.get("status", "done")
         summary = params.get("summary", "")
+
+        if status == "done" and not result:
+            status = "partial"
+            summary = summary or "SubAgent reported done but provided no result."
         
         self._done = True
         finish_result = {"result": result, "status": status, "summary": summary}

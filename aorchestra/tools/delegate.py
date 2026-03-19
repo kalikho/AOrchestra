@@ -125,8 +125,12 @@ class DelegateTaskTool(BaseAction):
         real_model = self.alias_to_model.get(model, model)
         if real_model not in self.models:
             return {"error": f"Invalid model: {model}", "steps_taken": 0, "done": False}
+
+        effective_tools = tools
+        if self.benchmark_type == "gaia":
+            effective_tools = None
         
-        logger.info(f"[DelegateTool] Creating SubAgent with model={real_model}, tools={tools}")
+        logger.info(f"[DelegateTool] Creating SubAgent with model={real_model}, tools={effective_tools}")
         
         # 2. Get original question
         original_question = getattr(self.env, 'instruction', '') or ''
@@ -152,7 +156,7 @@ class DelegateTaskTool(BaseAction):
                 task_instruction=task_instruction,
                 context=context,
                 original_question=original_question,
-                allowed_tools=tools,
+                allowed_tools=effective_tools,
                 memory=Memory(llm=llm, max_memory=10),
             )
         
@@ -188,7 +192,7 @@ class DelegateTaskTool(BaseAction):
             
             return {
                 "model": real_model,
-                "tools_assigned": tools,
+                "tools_assigned": effective_tools,
                 "steps_taken": result.steps,
                 "done": result.done,
                 "cost": result.cost,

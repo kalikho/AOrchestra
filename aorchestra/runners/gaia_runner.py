@@ -207,6 +207,7 @@ class GAIARunner:
                         action_name = action.get("action")
                         params = action.get("params", {})
                         result = action.get("result", {})
+                        subtask_history = action.get("subtask_history", "")
                         
                         attempts_detail.append({
                             "attempt": attempt_idx + 1,
@@ -214,6 +215,7 @@ class GAIARunner:
                             "params": params,
                             "result": result,
                             "raw_response": resp,
+                            "subtask_history": subtask_history,
                         })
                         
                         if action_name == "complete":

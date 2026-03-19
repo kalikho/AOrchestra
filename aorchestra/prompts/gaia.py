@@ -82,18 +82,20 @@ Model Selection Strategy:
 ==== SUBTASK HISTORY ====
 {subtask_history if subtask_history else "No subtasks completed yet."}
 
-==== AVAILABLE TOOLS ====
-{tools_description}
-
 ==== OUTPUT ====
-ANSWER FORMAT: requires precise, concise answers (single word, number, or short phrase). Do NOT include explanations in the answer field.
+BEFORE completing, re-read the QUESTION carefully and verify:
+- Units: if the question asks "how many thousand km", answer "5" not "5000". Always match the unit the question specifies.
+- Precision: if it says "to 2 decimal places", give "3.14" not "3.1" or "3.141". If it says "rounded to nearest tenth", give "7.3" not "7.28".
+- Format: if it asks for "comma-separated list in alphabetical order", sort your items. If it specifies a date format like DD/MM/YYYY, use that exact format.
+- Implicit precision: if the question gives an example answer like "so you'd give 12.5", match that level of precision in your own answer.
+- Content: answer ONLY what is asked. Do not add explanations, reasoning, or extra context in the answer field.
 
 Return JSON:
 
 If results are SUFFICIENT:
 {{
   "action": "complete",
-  "reasoning": "The subtask results show [X], which answers the question",
+  "reasoning": "The subtask results show [X], which answers the question. Verified: units=[Y], precision=[Z].",
   "params": {{ "answer": "concise answer" }}
 }}
 
@@ -104,10 +106,7 @@ If more work is NEEDED:
   "params": {{
     "task_instruction": "A SPECIFIC, ACTIONABLE subtask (e.g., 'Extract second word from abstract of paper 2211.xxxxx')",
     "context": "Relevant findings from previous attempts",
-    "model": "one of {sub_models}",
-    "tools": choose the potential tools from the {tools_description} to complete the subtask: ["tool1", "tool2", "..."],
+    "model": "one of {sub_models}"
   }}
 }}
-
-⚠️ Select relevant tools from AVAILABLE TOOLS section for the subtask.
 """.strip()
