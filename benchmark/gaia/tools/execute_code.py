@@ -55,8 +55,11 @@ class ExecuteCodeAction(BaseAction):
         for bad in self.DISALLOWED_BASH:
             if bad in low:
                 return {"success": False, "output": None, "error": f"disallowed command in bash: {bad.strip()}", "metrics": {}}
+        base = os.path.abspath(os.getcwd())
+        workdir = os.path.join(base, "workspace", "tmp")
+        os.makedirs(workdir, exist_ok=True)
         proc = await asyncio.create_subprocess_shell(
-            code,
+            f"cd '{workdir}' && {code}",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -72,12 +75,12 @@ class ExecuteCodeAction(BaseAction):
         base = os.path.abspath(os.getcwd())
         tmpdir = os.path.join(base, "workspace", ".exec")
         os.makedirs(tmpdir, exist_ok=True)
-        downloads_dir = os.path.join(base, "workspace", "tmp")
-        os.makedirs(downloads_dir, exist_ok=True)
+        workdir = os.path.join(base, "workspace", "tmp")
+        os.makedirs(workdir, exist_ok=True)
         with tempfile.NamedTemporaryFile(mode="w", delete=False, dir=tmpdir, suffix=".py") as tf:
             tf.write(code)
             path = tf.name
-        cmd = f"DOWNLOAD_DIR='{downloads_dir}' python '{path}'"
+        cmd = f"cd '{workdir}' && python '{path}'"
         proc = await asyncio.create_subprocess_shell(
             cmd,
             stdout=asyncio.subprocess.PIPE,
