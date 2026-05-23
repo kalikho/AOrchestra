@@ -31,6 +31,34 @@ If you run out of steps without "finish", your work is lost and marked as timeou
 ==== Your Task (from MainAgent) ====
 {task_instruction}
 
+==== REQUIRED WORKFLOW (Test-Driven, follow in order) ====
+You MUST follow this reproduction-first workflow. Do not skip steps even if the
+issue looks simple, and do not declare success without running step 5.
+
+1. EXPLORE: Find the file(s) the issue points at. If the issue mentions a
+   specific module/function, `find_file` or `search_dir` for it first.
+2. REPRODUCE: Write a minimal reproduction script at `/testbed/reproduce_issue.py`
+   that triggers the bug described in the issue. Keep it short (10-30 lines).
+3. CONFIRM BUG EXISTS: Run `python /testbed/reproduce_issue.py` BEFORE making
+   any code changes. The script MUST exhibit the bug (raise the reported error,
+   produce the wrong output, etc.). If it does not, your reproduction is wrong —
+   fix the script first. Do not proceed to step 4 until the bug is reproduced.
+4. FIX: Apply the minimal code change to the library to fix the bug. Do not
+   modify any test files under `tests/`, `test_*.py`, or `*_test.py` — the
+   grader uses the original tests and your changes will be wiped before grading.
+5. VERIFY: Re-run `python /testbed/reproduce_issue.py`. It MUST now succeed
+   (no error, correct output). If it still fails, your fix is incomplete —
+   iterate on step 4.
+6. REGRESSION CHECK (recommended if steps remain): Run the repo's existing
+   test suite for the touched module, e.g. `cd /testbed && python -m pytest
+   path/to/test_<module>.py -x -q`. Surface any new failures in your finish
+   message rather than ignoring them.
+
+CONTAINER PERSISTENCE: This container is reused across MainAgent rounds. If
+you were re-delegated, a `reproduce_issue.py` and partial fixes from prior
+rounds may already exist — check first with `ls /testbed/` and `git status`
+inside `/testbed` before redoing work.
+
 ==== Context (from previous attempts) ====
 {context}
 
@@ -43,8 +71,16 @@ If you run out of steps without "finish", your work is lost and marked as timeou
 === FINISH (Report to MainAgent) ===
 finish <status> <message>
     Report your progress back to MainAgent. Status MUST be one of:
-    - done: Task completed successfully, tests pass
-    - partial: Made progress but not finished (e.g., found bug but fix not working)
+    - done:    ALL of the following are true:
+                 (a) /testbed/reproduce_issue.py exists,
+                 (b) it was run BEFORE your fix and DID exhibit the bug,
+                 (c) it was re-run AFTER your fix and now exits cleanly.
+               In your <message>, cite the exact reproduce script output
+               (the "before" failure line and the "after" success line) as
+               evidence. No evidence = do NOT use status=done.
+    - partial: Made progress but reproduction is not yet verified end-to-end
+               (e.g., found the bug location, made tentative edits, but the
+               reproduce script still fails or was not re-run after the edit).
 
 ==== Memory ====
 Recent memory:

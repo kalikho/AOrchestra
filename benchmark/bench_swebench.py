@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
+from swebench.harness.constants import MAP_REPO_VERSION_TO_SPECS
 
 from base.engine.logs import logger
 from base.agent.base_agent import BaseAgent
@@ -125,6 +126,10 @@ class SWEBenchEnvironment(Environment):
         self._done = False
         self._command_history: List[str] = []
         self._patch_submitted: bool = False
+        # Container is started lazily on first reset(); subsequent resets reuse it
+        # so per-round filesystem changes (patches applied by SubAgent) survive
+        # across delegate_task rounds.
+        self._container_started: bool = False
 
         # Logs directory
         if config.timestamp:
@@ -235,6 +240,31 @@ TIP: For deleting code blocks, use "delete_lines <file> <start> <end>" instead o
 
     def _build_instruction(self) -> str:
         """Build instruction from problem statement."""
+        try:
+            specs = MAP_REPO_VERSION_TO_SPECS[self.instance.repo][self.instance.version]
+        except KeyError:
+            specs = {}
+        testbed_python = specs.get("python", "unknown")
+        test_cmd = specs.get("test_cmd", "")
+        pre_install = specs.get("pre_install") or []
+        install_cmd = specs.get("install", "")
+
+        env_lines = [
+            "- OS: Linux (Docker container)",
+            "- Working directory: `/testbed` (repo is already cloned and checked out)",
+            "- Conda env: `testbed` (activate before running Python: "
+            "`source /opt/miniconda3/etc/profile.d/conda.sh && conda activate testbed`)",
+            f"- Python: **{testbed_python}** (the only interpreter installed; "
+            "no python2/python2.7 exists)",
+        ]
+        if test_cmd:
+            env_lines.append(f"- Test command (per swebench spec): `{test_cmd}`")
+        if install_cmd or pre_install:
+            env_lines.append(
+                "- Dependencies are already installed by the harness. You do NOT need to "
+                "rerun pip install or any setup steps."
+            )
+
         instruction = f"""You are a software engineer working on fixing a GitHub issue.
 
 ## Repository
@@ -249,24 +279,29 @@ TIP: For deleting code blocks, use "delete_lines <file> <start> <end>" instead o
 3. Make the necessary code changes to fix the issue
 4. Ensure your fix doesn't break existing functionality
 
+## Environment Context
+{chr(10).join(env_lines)}
+
+## Python Version (IMPORTANT)
+- The `testbed` conda environment runs **Python {testbed_python}**. This is the only Python
+  available in the container.
+- The issue description above may reference a different Python version (e.g. "Python 2.7")
+  as historical context. **Ignore those version references for execution.** Do not search
+  for `python2`/`python2.7` or other interpreters — they are not installed and will not be.
+- Your fix must work under Python {testbed_python}, and any reproduction script you write
+  must run under Python {testbed_python}.
+
 ## Your Working Environment
 - You are ALREADY running INSIDE a Docker container - do NOT try to run docker commands
-- The repository is already cloned at `/testbed` and checked out to the correct commit
 - Use ACI commands (open, find_file, search_dir) for file navigation
 - Use the edit command for making changes (includes automatic syntax checking)
 - When you're done, submit your fix using the 'submit' command
 
-## Environment Setup
-- To run Python commands (e.g., pytest, python scripts), you MUST first activate the conda environment:
-  `source /opt/miniconda3/etc/profile.d/conda.sh && conda activate testbed`
-- Basic shell commands (find, grep, cat, sed) do NOT require conda activation
-
 ## Running Tests
-IMPORTANT: Check how this project runs tests BEFORE using pytest directly!
-- Many projects have custom test runners (e.g., `runtests.py`, `manage.py test`)
-- For Django projects: use `python tests/runtests.py <module>` instead of pytest
-- For other projects: look for `runtests.py`, `setup.py test`, or check `README.md`/`CONTRIBUTING.md`
-- Example for Django: `source /opt/miniconda3/etc/profile.d/conda.sh && conda activate testbed && cd /testbed && python tests/runtests.py admin_checks`
+- Basic shell commands (find, grep, cat, sed) do NOT require conda activation
+- To run Python (pytest, scripts), activate the conda env first:
+  `source /opt/miniconda3/etc/profile.d/conda.sh && conda activate testbed`
+- Use the test command from the Environment Context above; it is what the grader will run.
 """
         if self.instance.hints_text:
             instruction += f"\n## Hints\n{self.instance.hints_text}\n"
@@ -299,28 +334,37 @@ COMMAND
 '''
 
     async def reset(self, seed: int | None = None) -> Observation:
-        """Reset environment by starting Docker container."""
+        """Reset per-round state.
+
+        First call: starts the Docker container and initializes ACI.
+        Subsequent calls (same instance, next SubAgent round): reuse the
+        existing container — filesystem patches from prior rounds are
+        preserved — and rebuild only the ACI manager so the new SubAgent
+        starts with a clean file/window view.
+        """
         self._done = False
         self._steps = 0
         self._command_history = []
         self._patch_submitted = False
-        self._container_started = False  # Track container status for Orchestra
 
-        # Start container
-        await self._executor.start_container()
-        self._container_started = True  # Container is now running
-        
-        # Initialize ACI manager
+        if not self._container_started:
+            await self._executor.start_container()
+            self._container_started = True
+            container_status = "Environment ready. Repository cloned and checked out to base commit."
+        else:
+            container_status = "Environment ready (container reused from previous round; prior file changes preserved)."
+
+        # Always rebuild ACI manager so each round starts with no open file
         self._aci_manager = ACIToolManager(
             executor=self._executor,
             window_size=self.config.window_size
         )
-        
+
         # Get initial state
         state_info = self._aci_manager.state.to_status_line()
 
         return {
-            "message": "Environment ready. Repository cloned and checked out to base commit.",
+            "message": container_status,
             "output": f"Environment initialized.\n{state_info}\n\nStart by exploring the repository with 'find_file' or 'ls /testbed'.",
             "state_info": state_info,
             "current_step": 0,
@@ -577,6 +621,7 @@ COMMAND
     async def close(self):
         """Close environment and cleanup resources."""
         await self._executor.cleanup()
+        self._container_started = False
 
 
 class SWEBenchRunner(IncrementalRunner):

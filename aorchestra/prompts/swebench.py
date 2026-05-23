@@ -78,14 +78,29 @@ INSTANCE: {instance_id}
    - Did SubAgent locate the buggy code?
    - Did SubAgent make appropriate code changes?
    - Did SubAgent run tests and confirm the fix works?
-4. DECIDE:
-   - ✅ status="done" AND tests pass → Use 'submit'
-   - ⚠️ status="done" BUT tests fail or incomplete → Use 'delegate_task' to fix remaining issues
+4. CHECK REPRODUCTION EVIDENCE before considering 'submit':
+   A 'submit' is only valid when SUBTASK HISTORY (or SubAgent's finish message)
+   shows ALL three of the following — quote the lines to yourself:
+     (a) a reproduction script exists at /testbed/reproduce_issue.py,
+     (b) it was run on the original code and DID exhibit the bug (the
+         expected error / wrong output appeared),
+     (c) it was re-run AFTER the fix and now exits cleanly (the bug is gone).
+   If any of (a)(b)(c) is missing or unclear, DO NOT submit — delegate one
+   more round explicitly asking the SubAgent to fill the gap.
+5. DECIDE:
+   - ✅ status="done" AND reproduction evidence (a)(b)(c) all present → Use 'submit'
+   - ⚠️ status="done" BUT reproduction evidence incomplete → Use 'delegate_task'
+     asking SubAgent to produce/run the reproduce script
+   - ⚠️ status="done" BUT tests fail or other gaps → Use 'delegate_task' to fix
    - ⚠️ status="partial" → Use 'delegate_task' with guidance on next steps
 
 CRITICAL: SWE-BENCH CONTAINER BEHAVIOR
-- When SubAgent reports status="done" with passing tests, use 'submit' to trigger final evaluation
-- 'submit' runs the official test suite (FAIL_TO_PASS + PASS_TO_PASS tests) to determine success
+- The container is REUSED across rounds — code changes from prior SubAgent rounds
+  are still on disk. New SubAgents should `git status` inside /testbed to see
+  prior progress instead of redoing it.
+- 'submit' runs the official test suite to determine success. A premature
+  submit (before reproduction is verified) wastes the only graded attempt
+  for this instance.
 
 
 ==== MODEL SELECTION ====
@@ -103,16 +118,28 @@ CRITICAL: SWE-BENCH CONTAINER BEHAVIOR
 {SWEBENCH_TOOLS_DESCRIPTION}
 
 ==== OUTPUT ====
-Return JSON:
+Return JSON. The 'reasoning' field MUST quote the reproduction evidence
+(steps 4(a)(b)(c) above) when choosing 'submit'.
 
-If SubAgent status="done" AND tests pass:
+If SubAgent status="done" AND reproduction evidence (a)(b)(c) all present:
 {{
   "action": "submit",
-  "reasoning": "Verified: [what was fixed, which tests passed]. Submitting for evaluation.",
-  "params": {{ "reason": "Fix verified: [specific fix description]" }}
+  "reasoning": "Verified end-to-end: (a) reproduce_issue.py at /testbed exists; (b) before fix it produced: <quote bug output>; (c) after fix it produced: <quote success output>. Submitting for grading.",
+  "params": {{ "reason": "Fix verified by reproduction: [specific fix description]" }}
 }}
 
-If SubAgent status="done" BUT tests fail or incomplete:
+If SubAgent status="done" BUT reproduction evidence incomplete:
+{{
+  "action": "delegate_task",
+  "reasoning": "SubAgent claims done but reproduction evidence is incomplete: missing [(a)|(b)|(c)]. Cannot trust 'tests pass' claim without it.",
+  "params": {{
+    "task_instruction": "Do NOT modify code further. Your only job this round: (1) ensure /testbed/reproduce_issue.py exists and demonstrates the bug from the issue, (2) run it to confirm the bug status pre-fix is reproducible (if the patched code is already in place, you may need git stash to check pre-fix behavior), (3) run it on the patched code and quote the exact output. Finish with done ONLY if all three are demonstrated.",
+    "context": "⚠️ Prior round reported done without reproduction evidence.\\n- Code changes claimed: [what SubAgent said it fixed]\\n- Missing: reproduction script / before-fix run / after-fix run",
+    "model": "one of {sub_models}"
+  }}
+}}
+
+If SubAgent status="done" BUT tests fail or other gaps:
 {{
   "action": "delegate_task",
   "reasoning": "SubAgent reported done but [specific issue]: tests show [failure details]",
