@@ -78,19 +78,42 @@ INSTANCE: {instance_id}
    - Did SubAgent locate the buggy code?
    - Did SubAgent make appropriate code changes?
    - Did SubAgent run tests and confirm the fix works?
-4. CHECK REPRODUCTION EVIDENCE before considering 'submit':
+4. CHECK BEFORE/AFTER EVIDENCE before considering 'submit':
    A 'submit' is only valid when SUBTASK HISTORY (or SubAgent's finish message)
-   shows ALL three of the following — quote the lines to yourself:
-     (a) a reproduction script exists at /testbed/reproduce_issue.py,
-     (b) it was run on the original code and DID exhibit the bug (the
-         expected error / wrong output appeared),
-     (c) it was re-run AFTER the fix and now exits cleanly (the bug is gone).
-   If any of (a)(b)(c) is missing or unclear, DO NOT submit — delegate one
-   more round explicitly asking the SubAgent to fill the gap.
+   shows a BEFORE/AFTER evidence pair in ONE of the three shapes below — quote
+   the lines to yourself.
+
+   Shape R (Runtime reproduction) — when the issue describes a crash / exception /
+   wrong output that triggers at runtime:
+     - BEFORE: a script (typically /testbed/reproduce_issue.py) was run on the
+       base code and reproduced the error/wrong-output described in the issue.
+     - AFTER:  the same script was re-run after the fix and exits cleanly /
+       prints the correct output.
+
+   Shape S (Spec conformance) — when the issue is a version bump, new
+   constraint, default-behavior change, or deprecation that does NOT crash at
+   runtime in the current env:
+     - BEFORE: a minimal demonstration (mock.patch on an edge value, or a
+       targeted assertion) showed the base code accepts an input the new spec
+       forbids, or rejects an input the new spec requires.
+     - AFTER:  the same demonstration shows the new behavior matches the spec.
+
+   Shape T (Test-suite delta) — when there is an existing repo test that maps
+   to the issue, or SubAgent wrote a targeted pytest case:
+     - BEFORE: running `pytest path/to/test.py::test_X` on the base code shows
+       the test failing with a quoted assertion / error.
+     - AFTER:  same command shows it passing.
+
+   ANY ONE of R / S / T is sufficient. What is NOT sufficient: a SubAgent
+   claiming "tests passed" without a BEFORE state, or running only a
+   self-authored sanity script that never demonstrates the base-code failure.
+   If BEFORE or AFTER is missing/unclear, DO NOT submit — delegate one more
+   round asking SubAgent to fill the missing half.
 5. DECIDE:
-   - ✅ status="done" AND reproduction evidence (a)(b)(c) all present → Use 'submit'
-   - ⚠️ status="done" BUT reproduction evidence incomplete → Use 'delegate_task'
-     asking SubAgent to produce/run the reproduce script
+   - ✅ status="done" AND a valid BEFORE/AFTER pair (R, S, or T) is present
+        → Use 'submit'
+   - ⚠️ status="done" BUT evidence is one-sided or absent
+        → Use 'delegate_task' asking SubAgent to produce the missing half
    - ⚠️ status="done" BUT tests fail or other gaps → Use 'delegate_task' to fix
    - ⚠️ status="partial" → Use 'delegate_task' with guidance on next steps
 
@@ -118,23 +141,23 @@ CRITICAL: SWE-BENCH CONTAINER BEHAVIOR
 {SWEBENCH_TOOLS_DESCRIPTION}
 
 ==== OUTPUT ====
-Return JSON. The 'reasoning' field MUST quote the reproduction evidence
-(steps 4(a)(b)(c) above) when choosing 'submit'.
+Return JSON. The 'reasoning' field MUST identify the evidence shape (R / S / T)
+and quote the BEFORE and AFTER lines from SUBTASK HISTORY when choosing 'submit'.
 
-If SubAgent status="done" AND reproduction evidence (a)(b)(c) all present:
+If SubAgent status="done" AND a valid BEFORE/AFTER pair is present:
 {{
   "action": "submit",
-  "reasoning": "Verified end-to-end: (a) reproduce_issue.py at /testbed exists; (b) before fix it produced: <quote bug output>; (c) after fix it produced: <quote success output>. Submitting for grading.",
-  "params": {{ "reason": "Fix verified by reproduction: [specific fix description]" }}
+  "reasoning": "Evidence shape <R|S|T>. BEFORE: <quote base-state failure>. AFTER: <quote post-fix success>. Submitting for grading.",
+  "params": {{ "reason": "Fix verified by <shape> evidence: [specific fix description]" }}
 }}
 
-If SubAgent status="done" BUT reproduction evidence incomplete:
+If SubAgent status="done" BUT evidence is one-sided or absent:
 {{
   "action": "delegate_task",
-  "reasoning": "SubAgent claims done but reproduction evidence is incomplete: missing [(a)|(b)|(c)]. Cannot trust 'tests pass' claim without it.",
+  "reasoning": "SubAgent claims done but BEFORE/AFTER evidence is incomplete: missing <BEFORE state | AFTER state>. Cannot trust 'tests pass' claim without it.",
   "params": {{
-    "task_instruction": "Do NOT modify code further. Your only job this round: (1) ensure /testbed/reproduce_issue.py exists and demonstrates the bug from the issue, (2) run it to confirm the bug status pre-fix is reproducible (if the patched code is already in place, you may need git stash to check pre-fix behavior), (3) run it on the patched code and quote the exact output. Finish with done ONLY if all three are demonstrated.",
-    "context": "⚠️ Prior round reported done without reproduction evidence.\\n- Code changes claimed: [what SubAgent said it fixed]\\n- Missing: reproduction script / before-fix run / after-fix run",
+    "task_instruction": "Do NOT modify code further. Your only job this round: produce the missing half of the BEFORE/AFTER pair. Pick the shape that fits the issue: (R) run reproduce_issue.py on the unfixed code to show the runtime error from the issue; (S) for spec-change issues, write a minimal demonstration (mock or assertion) that shows the base code violates the new spec; (T) identify a repo test or write a targeted pytest case, run it on base to show failure. Then re-run after the fix to show the matching AFTER state. Quote both outputs verbatim. Finish with done ONLY when both halves are demonstrated.",
+    "context": "⚠️ Prior round reported done without a complete BEFORE/AFTER pair.\\n- Code changes claimed: [what SubAgent said it fixed]\\n- Missing: [BEFORE state | AFTER state | both]",
     "model": "one of {sub_models}"
   }}
 }}

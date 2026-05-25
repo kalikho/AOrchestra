@@ -31,25 +31,38 @@ If you run out of steps without "finish", your work is lost and marked as timeou
 ==== Your Task (from MainAgent) ====
 {task_instruction}
 
-==== REQUIRED WORKFLOW (Test-Driven, follow in order) ====
-You MUST follow this reproduction-first workflow. Do not skip steps even if the
-issue looks simple, and do not declare success without running step 5.
+==== REQUIRED WORKFLOW (Evidence-First) ====
+You MUST produce a BEFORE/AFTER evidence pair before declaring `done`. Pick the
+shape that fits the issue — at least one shape is always applicable.
 
 1. EXPLORE: Find the file(s) the issue points at. If the issue mentions a
    specific module/function, `find_file` or `search_dir` for it first.
-2. REPRODUCE: Write a minimal reproduction script at `/testbed/reproduce_issue.py`
-   that triggers the bug described in the issue. Keep it short (10-30 lines).
-3. CONFIRM BUG EXISTS: Run `python /testbed/reproduce_issue.py` BEFORE making
-   any code changes. The script MUST exhibit the bug (raise the reported error,
-   produce the wrong output, etc.). If it does not, your reproduction is wrong —
-   fix the script first. Do not proceed to step 4 until the bug is reproduced.
-4. FIX: Apply the minimal code change to the library to fix the bug. Do not
-   modify any test files under `tests/`, `test_*.py`, or `*_test.py` — the
-   grader uses the original tests and your changes will be wiped before grading.
-5. VERIFY: Re-run `python /testbed/reproduce_issue.py`. It MUST now succeed
-   (no error, correct output). If it still fails, your fix is incomplete —
+2. CHOOSE THE EVIDENCE SHAPE based on the issue:
+   - Shape R (Runtime reproduction): the issue describes a crash / exception /
+     wrong output that you can trigger by running code in this container.
+   - Shape S (Spec conformance): the issue is a version bump, new constraint,
+     default-behavior change, or deprecation — there is no runtime crash to
+     trigger, only a spec the code does not yet match.
+   - Shape T (Test-suite delta): the issue refers to an existing repo test, or
+     you can write a targeted pytest case that maps cleanly to the issue.
+3. PRODUCE THE 'BEFORE' STATE on the base code, before any fix:
+   - R: write `/testbed/reproduce_issue.py` (10-30 lines) and run it; it MUST
+     emit the error / wrong output described in the issue.
+   - S: write a minimal demonstration (using `mock.patch` on an edge value, or
+     a targeted assertion) showing the base code accepts an input the new spec
+     forbids, or rejects an input the new spec requires.
+   - T: run `python -m pytest path/to/test.py::test_X` on the unfixed code and
+     confirm it fails with a quoted assertion / error.
+   If the BEFORE state does not show the expected failure, your evidence is
+   wrong — adjust it before proceeding.
+4. FIX: Apply the minimal code change to fix the issue. Do not modify any test
+   files under `tests/`, `test_*.py`, or `*_test.py` — the grader uses the
+   original tests and your changes will be wiped before grading.
+5. PRODUCE THE 'AFTER' STATE by re-running the same script / demonstration /
+   pytest command from step 3. It MUST now succeed (correct output, spec
+   satisfied, test passing). If it still fails, your fix is incomplete —
    iterate on step 4.
-6. REGRESSION CHECK (recommended if steps remain): Run the repo's existing
+6. REGRESSION CHECK (recommended if steps remain): run the repo's existing
    test suite for the touched module, e.g. `cd /testbed && python -m pytest
    path/to/test_<module>.py -x -q`. Surface any new failures in your finish
    message rather than ignoring them.
@@ -71,16 +84,15 @@ inside `/testbed` before redoing work.
 === FINISH (Report to MainAgent) ===
 finish <status> <message>
     Report your progress back to MainAgent. Status MUST be one of:
-    - done:    ALL of the following are true:
-                 (a) /testbed/reproduce_issue.py exists,
-                 (b) it was run BEFORE your fix and DID exhibit the bug,
-                 (c) it was re-run AFTER your fix and now exits cleanly.
-               In your <message>, cite the exact reproduce script output
-               (the "before" failure line and the "after" success line) as
-               evidence. No evidence = do NOT use status=done.
-    - partial: Made progress but reproduction is not yet verified end-to-end
+    - done:    A complete BEFORE/AFTER evidence pair (shape R, S, or T) is in
+               place. In your <message>, identify the shape and cite the exact
+               BEFORE output (failure / wrong-output / failing assertion) and
+               the matching AFTER output (success / spec satisfied / test
+               passing). No BEFORE/AFTER pair = do NOT use status=done.
+    - partial: Made progress but the BEFORE/AFTER pair is not yet complete
                (e.g., found the bug location, made tentative edits, but the
-               reproduce script still fails or was not re-run after the edit).
+               AFTER state still shows failure, or the BEFORE state was never
+               demonstrated).
 
 ==== Memory ====
 Recent memory:
