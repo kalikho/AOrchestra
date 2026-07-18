@@ -3,11 +3,11 @@
 
 # ======== Model Configuration ========
 # Model used by MainAgent (responsible for task decomposition and coordination)
-main_model: "Qwen/Qwen2.5-7B-Instruct"
+main_model: "gemini-3-flash-preview"
 
 # List of models used by SubAgent (responsible for executing specific subtasks)
 sub_models:
-  - "Qwen/Qwen2.5-7B-Instruct"
+  - "gemini-3-flash-preview"
 
 # ======== Dataset Configuration ========
 dataset_path: "benchmark/gaia/data/Gaia/2023/validation/metadata.jsonl"
