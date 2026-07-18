@@ -3,11 +3,11 @@
 
 # ======== Model Configuration ========
 # Model used by MainAgent (responsible for task decomposition and coordination)
-main_model: "gpt-4o-mini"
+main_model: "Qwen/Qwen2.5-7B-Instruct"
 
 # List of models used by SubAgent (responsible for executing specific subtasks)
 sub_models:
-  - "gpt-4o-mini"
+  - "Qwen/Qwen2.5-7B-Instruct"
 
 # ======== Dataset Configuration ========
 dataset_path: "benchmark/gaia/data/Gaia/2023/validation/metadata.jsonl"
