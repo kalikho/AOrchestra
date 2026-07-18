@@ -3,7 +3,6 @@
 
 # Personal config (contains API keys)
 config/model_config.yaml
-config/benchmarks/
 
 # Runtime output
 workspace/
@@ -16,8 +15,9 @@ __pycache__/
 dist/
 build/
 
-# Datasets (large files)
-benchmark/gaia/data/Gaia/
+# Datasets (large files, only metadata tracked)
+benchmark/gaia/data/Gaia/2023/validation/*
+!benchmark/gaia/data/Gaia/2023/validation/metadata.jsonl
 benchmark/terminalbench/terminal-bench/
 
 # OS

@@ -1,0 +1,43 @@
+# TerminalBench Benchmark Configuration (Orchestra Mode)
+# For bench_aorchestra_terminalbench.py (MainAgent + SubAgent mode)
+
+# ======== Model Configuration ========
+main_model: "gemini-2.5-flash"
+sub_models:
+  - "gemini-2.5-flash"
+
+# ======== Task Configuration ========
+# Task directory (requires terminal-bench dataset to be downloaded first)
+# validate directory for validation, test directory for testing
+tasks_dir: "benchmark/terminalbench/terminal-bench/test"
+
+# ======== Task Limits ========
+max_steps: 50
+max_tasks: 10
+max_attempts: 10
+max_concurrency: 3
+
+# ======== Sandbox Configuration ========
+# Sandbox type: "docker" | "e2b" | "daytona"
+sandbox: "docker"
+
+# Docker timeout (seconds)
+docker_timeout: 600
+
+# E2B configuration (required when sandbox: "e2b")
+# Set environment variable E2B_API_KEY or configure here
+# e2b_api_key: ""
+
+# Daytona configuration (required when sandbox: "daytona")
+# daytona_api_key: ""
+# daytona_api_url: ""
+# daytona_target: ""
+
+# ======== Output Configuration ========
+result_folder: "workspace/logs/terminalbench_aorchestra"
+
+# ======== Environment Variable Injection ========
+# Environment variables to inject into sandbox container
+# env_init:
+#   http_proxy: "http://127.0.0.1:7890"
+#   https_proxy: "http://127.0.0.1:7890"

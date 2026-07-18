@@ -1,0 +1,44 @@
+# SWE-bench Benchmark Configuration (Orchestra Mode)
+# For bench_aorchestra_swebench.py (MainAgent + SubAgent mode)
+
+# ======== Model Configuration ========
+main_model: "gemini-2.5-flash"
+sub_models:
+  - "gemini-2.5-flash"
+
+# ======== Dataset Configuration ========
+# Auto-loaded from HuggingFace
+dataset_name: "princeton-nlp/SWE-bench_Verified"
+split: "test"
+
+# Deterministic sampling configuration
+subset_seed: 42
+subset_sizes:
+  validate: 20    # Validation set size
+  test: 100       # Test set size
+
+# Select which subset to run
+# "all" = run validate + test in order
+# "validate" = run validation set only
+# "test" = run test set only
+subset_role: "validate"
+
+# ======== Task Limits ========
+max_steps: 50
+max_tasks: 10
+max_attempts: 10
+max_concurrency: 3
+
+# Docker timeout (seconds)
+docker_timeout: 1800
+
+# ======== Output Configuration ========
+result_folder: "workspace/logs/swebench_aorchestra"
+
+# ======== Optional Configuration ========
+# Specify specific instance IDs to run
+# selected_ids_file: "benchmark/swebench/swebench_selected_ids.json"
+
+# Environment variable injection into Docker container
+# env_init:
+#   http_proxy: "http://127.0.0.1:7890"

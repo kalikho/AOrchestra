@@ -1,0 +1,39 @@
+# GAIA Benchmark Configuration (Baseline Mode)
+# For bench_gaia.py (Single-layer Agent mode)
+
+# ======== Dataset Configuration ========
+# GAIA root directory (contains year/split subdirectories)
+gaia_root: "benchmark/gaia/data/Gaia"
+
+# Dataset version and split
+year: "2023"
+split: "validation"   # "validation" or "test"
+
+# Alternative: specify exact paths (overrides gaia_root/year/split)
+# dataset_path: "benchmark/gaia/data/Gaia/2023/validation/metadata.jsonl"
+# attachments_dir: "benchmark/gaia/data/Gaia/2023/validation"
+
+# ======== Task Filtering ========
+# Filter by difficulty level: null = all levels, or specify level(s)
+# Single level: 1, 2, or 3
+# Multiple levels: [1, 2] or [2, 3]
+level_filter: null
+
+# ======== Task Limits ========
+# Maximum number of tasks to run (null = all tasks)
+max_tasks: 5
+
+# Maximum steps per task before timeout
+max_steps: 30
+
+# ======== Output Configuration ========
+# Results and trajectory directories
+result_folder: "workspace/logs/gaia_baseline"
+trajectory_folder: "workspace/logs/gaia_baseline/trajectories"
+
+# ======== Required Environment Variables ========
+# Configure in .env file:
+#   JINA_API_KEY     - for web search/browsing
+#   SERPER_API_KEY   - for Google search
+#   OPENAI_API_KEY   - for model API (if using OpenAI)
+#   GEMINI_API_KEY   - for Gemini model (if using Google)

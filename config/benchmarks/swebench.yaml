@@ -1,0 +1,56 @@
+# SWE-bench Benchmark Configuration (Baseline Mode)
+# For bench_swebench.py (Single-layer Agent with ACI tools)
+
+# ======== Dataset Configuration ========
+# Dataset from HuggingFace (auto-downloaded)
+dataset_name: "princeton-nlp/SWE-bench_Verified"
+split: "test"
+
+# Deterministic sampling configuration (for reproducible subsets)
+subset_seed: 42
+
+# Subset sizes for validation/test split
+subset_sizes:
+  validate: 20    # Validation set size
+  test: 100       # Test set size
+
+# Which subset to run:
+# - "all": run validate + test in order
+# - "validate": run validation set only
+# - "test": run test set only
+subset_role: "validate"
+
+# ======== Task Limits ========
+# Maximum number of tasks to run (null = all tasks in subset)
+max_tasks: 10
+
+# Maximum steps per task before timeout
+max_steps: 50
+
+# ======== Docker Configuration ========
+# Timeout for Docker container operations (seconds)
+docker_timeout: 1800
+
+# ACI window size for file viewing
+window_size: 100
+
+# ======== Output Configuration ========
+# Results directory
+result_folder: "workspace/logs/swebench_baseline"
+
+# Optional: explicit trajectory and CSV paths
+# trajectory_dir: "workspace/logs/swebench_baseline/trajectories"
+# csv_summary_path: "workspace/logs/swebench_baseline/results.csv"
+
+# ======== Optional Configuration ========
+# HuggingFace cache directory (for offline use)
+# cache_dir: "~/.cache/huggingface"
+
+# Model specification (if needed)
+# model: "gemini-2.5-flash"
+
+# Environment variable injection into Docker container
+# Useful for proxy settings inside container
+# env_init:
+#   http_proxy: "http://host.docker.internal:7890"
+#   https_proxy: "http://host.docker.internal:7890"

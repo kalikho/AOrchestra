@@ -1,0 +1,51 @@
+# TerminalBench Benchmark Configuration (Baseline Mode)
+# For bench_terminalbench.py (Single-layer Agent mode)
+
+# ======== Task Configuration ========
+# Task directory path (requires terminal-bench dataset)
+# Download first: python run_terminalbench.py --download
+# Or manually: git clone https://github.com/laude-institute/terminal-bench-2.git
+tasks_dir: "benchmark/terminalbench/terminal-bench/test"
+
+# ======== Task Limits ========
+# Maximum number of tasks to run (null = all tasks)
+max_tasks: 10
+
+# Maximum steps per task before timeout
+max_steps: 30
+
+# ======== Sandbox Configuration ========
+# Sandbox type: "docker" | "e2b" | "daytona"
+sandbox: "docker"
+
+# Docker timeout (seconds)
+docker_timeout: 600
+
+# ======== E2B Configuration ========
+# Required when sandbox: "e2b"
+# Can also set via E2B_API_KEY environment variable
+# e2b_api_key: ""
+
+# ======== Daytona Configuration ========
+# Required when sandbox: "daytona"
+# daytona_api_key: ""
+# daytona_api_url: ""
+# daytona_target: ""
+
+# ======== Output Configuration ========
+# Results directory
+result_folder: "workspace/logs/terminalbench_baseline"
+
+# Optional: explicit trajectory and CSV paths
+# trajectory_dir: "workspace/logs/terminalbench_baseline/trajectories"
+# csv_summary_path: "workspace/logs/terminalbench_baseline/results.csv"
+
+# ======== Optional Configuration ========
+# Model specification (if needed)
+# model: "gemini-2.5-flash"
+
+# Environment variable injection into sandbox container
+# Useful for proxy settings inside container
+# env_init:
+#   http_proxy: "http://host.docker.internal:7890"
+#   https_proxy: "http://host.docker.internal:7890"
